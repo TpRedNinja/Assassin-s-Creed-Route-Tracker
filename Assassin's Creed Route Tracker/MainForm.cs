@@ -1,8 +1,4 @@
-using System;
 using System.Diagnostics;
-using System.Runtime.InteropServices;
-using System.Security.Cryptography.X509Certificates;
-using System.Windows.Forms;
 using ProcessMemory;
 
 namespace Assassin_s_Creed_Route_Tracker
@@ -10,7 +6,7 @@ namespace Assassin_s_Creed_Route_Tracker
     public partial class MainForm : Form
     {
         private ProcessMemoryHandler processMemoryHandler;
-        private string currentProcess;
+        private Process currentProcess;
         private MultilevelPointer percentPtr;
         private MultilevelPointer percentFloatPtr;
 
@@ -23,36 +19,36 @@ namespace Assassin_s_Creed_Route_Tracker
         private void InitializeCustomComponents()
         {
             this.Text = "Assassin's Creed Route Tracker";
-            this.BackColor = System.Drawing.Color.Black;
-            this.ForeColor = System.Drawing.Color.White;
+            this.BackColor = Color.Black;
+            this.ForeColor = Color.White;
 
             Label connectionLabel = new Label();
             connectionLabel.Text = "Not connected";
-            connectionLabel.Location = new System.Drawing.Point((this.ClientSize.Width - 100) / 2, 10);
+            connectionLabel.Location = new Point((this.ClientSize.Width - 100) / 2, 10);
             connectionLabel.AutoSize = true;
             this.Controls.Add(connectionLabel);
 
             ComboBox gameDropdown = new ComboBox();
             gameDropdown.Items.AddRange(new object[] { "", "Assassin's Creed 4", "Assassin's Creed Syndicate" });
             gameDropdown.SelectedIndex = 0;
-            gameDropdown.Location = new System.Drawing.Point((this.ClientSize.Width - 800) / 2, 10);
+            gameDropdown.Location = new Point((this.ClientSize.Width - 800) / 2, 10);
             this.Controls.Add(gameDropdown);
 
             Button connectButton = new Button();
             connectButton.Text = "Connect to Game";
-            connectButton.Location = new System.Drawing.Point((this.ClientSize.Width - 800) / 2, 40);
+            connectButton.Location = new Point((this.ClientSize.Width - 800) / 2, 40);
             connectButton.Click += ConnectButton_Click;
             this.Controls.Add(connectButton);
 
             Button percentageButton = new Button();
             percentageButton.Text = "Stats";
-            percentageButton.Location = new System.Drawing.Point((this.ClientSize.Width - 100) / 2, 140);
+            percentageButton.Location = new Point((this.ClientSize.Width - 100) / 2, 140);
             percentageButton.Click += PercentageButton_Click;
             this.Controls.Add(percentageButton);
 
             Label percentageLabel = new Label();
             percentageLabel.Text = "";
-            percentageLabel.Location = new System.Drawing.Point((this.ClientSize.Width - 100) / 2, 180);
+            percentageLabel.Location = new Point((this.ClientSize.Width - 100) / 2, 180);
             percentageLabel.AutoSize = true;
             this.Controls.Add(percentageLabel);
         }
@@ -61,19 +57,20 @@ namespace Assassin_s_Creed_Route_Tracker
         {
             ComboBox gameDropdown = (ComboBox)this.Controls[1];
             Label connectionLabel = (Label)this.Controls[0];
-            string selectedGame = gameDropdown.SelectedItem.ToString();
+            string processName;
+            string? selectedGame = gameDropdown.SelectedItem?.ToString();
 
             if (selectedGame == "Assassin's Creed 4")
-                currentProcess = "AC4BFSP.exe";
+                processName = "AC4BFSP";
             else if (selectedGame == "Assassin's Creed Syndicate")
-                currentProcess = "ACS.exe";
+                processName = "ACS";
             else
             {
                 connectionLabel.Text = "Please select a game.";
                 return;
             }
 
-            Connect();
+            Connect(processName);
             if (processMemoryHandler != null)
                 connectionLabel.Text = $"Connected to {selectedGame}";
             else
@@ -83,7 +80,7 @@ namespace Assassin_s_Creed_Route_Tracker
         private void PercentageButton_Click(object sender, EventArgs e)
         {
             Label percentageLabel = (Label)this.Controls[4];
-            if (processMemoryHandler != null && currentProcess == "AC4BFSP.exe")
+            if (processMemoryHandler != null && currentProcess.ProcessName == "AC4BFSP")
             {
                 try
                 {
@@ -98,36 +95,32 @@ namespace Assassin_s_Creed_Route_Tracker
                     percentageLabel.Text = $"Error: {ex.Message}";
                 }
             }
-            else if (processMemoryHandler != null && currentProcess == "ACS.exe")
+            else if (processMemoryHandler != null && currentProcess.ProcessName == "ACS")
                 percentageLabel.Text = "Percentage feature not available for Assassin's Creed Syndicate";
             else
                 percentageLabel.Text = "Not connected to a game";
         }
 
-        private unsafe void Connect()
+        private unsafe void Connect(string processName)
         {
             try
             {
-                Process[] processes = Process.GetProcessesByName(currentProcess.Replace(".exe", ""));
-                if (processes.Length > 0)
-                {
-                    Process process = processes[0];
-                    processMemoryHandler = new ProcessMemoryHandler((uint)process.Id);
-
-                    if (processMemoryHandler != null && currentProcess == "AC4BFSP.exe")
-                    {
-                        // Set up the percentage pointer for AC4
-                       percentPtr = new MultilevelPointer(processMemoryHandler, 
-                            (nint*)(process.MainModule?.BaseAddress + 0x49D9774));
-                        percentFloatPtr = new MultilevelPointer(processMemoryHandler,
-                            (nint*)(process.MainModule?.BaseAddress + 0x049F1EE8));
-                    }
-                }
-                else
+                Process[] processes = Process.GetProcessesByName(processName);
+                if (processes.Length == 0)
                 {
                     processMemoryHandler = null;
                     percentPtr = null;
                     percentFloatPtr = null;
+                    return;
+                }
+
+                currentProcess = processes[0];
+                processMemoryHandler = new ProcessMemoryHandler((uint)currentProcess.Id);
+                if (processMemoryHandler != null && currentProcess.ProcessName == "AC4BFSP")
+                {
+                    // Set up the percentage pointer for AC4
+                    percentPtr = new MultilevelPointer(processMemoryHandler, (nint*)currentProcess.MainModule?.BaseAddress, 0x49D9774);
+                    percentFloatPtr = new MultilevelPointer(processMemoryHandler, (nint*)currentProcess.MainModule?.BaseAddress, 0x049F1EE8);
                 }
             }
             catch (Exception)
