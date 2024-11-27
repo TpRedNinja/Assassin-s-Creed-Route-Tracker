@@ -185,8 +185,13 @@ namespace Assassin_s_Creed_Route_Tracker
                 {
                     throw new Exception("Failed to read memory");
                 }
-
                 baseAddr = (IntPtr)(BitConverter.ToUInt32(buffer, 0) + offset);
+            }
+
+            // Additional ReadProcessMemory call
+            if (!ReadProcessMemory(processHandle, baseAddr, buffer, buffer.Length, out bytesRead))
+            {
+                throw new Exception("Failed to read final memory value");
             }
 
             return BitConverter.ToInt32(buffer, 0);
