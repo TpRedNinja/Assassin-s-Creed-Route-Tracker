@@ -12,18 +12,18 @@ namespace Assassin_s_Creed_Route_Tracker
         private string currentProcess;
         private IntPtr baseAddress;
 
-        private int[] percentPtrOffsets = { 0x49D9774, 0x284 };
-        private int[] viewpointsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x28, 0x18 };
-        private int[] myanPtrOffsets = { 0x0002E8D0, 0x1A8, 0x3C, 0x18 };
-        private int[] treasurePtrOffsets = { 0x0051D814, 0x78, 0x0, 0x678 };
-        private int[] fragmentsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x0, 0x18 };
-        private int[] waterChestsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x64, 0x18 };
-        private int[] unchartedChestsPtrOffsets = { 0x0153A9DC, 0x158, 0x654, 0x18 };
-        private int[] assassinPtrOffsets = { 0x0153A9DC, 0xD4, 0x500, 0x78 };
-        private int[] navalPtrOffsets = { 0x0002E8D0, 0x1A8, 0x168, 0x18 };
-        private int[] lettersPtrOffsets = { 0x014218E8, 0x140, 0x678 };
-        private int[] manuscriptsPtrOffsets = { 0x0051D814, 0x6C, 0xA14, 0x18 };
-        private int[] musicPtrOffsets = { 0x016B6A7C, 0x54, 0x58C, 0x18 };
+        private int[] percentPtrOffsets = { 0x284 };
+        private int[] viewpointsPtrOffsets = { 0x1A8, 0x28, 0x18 };
+        private int[] myanPtrOffsets = { 0x1A8, 0x3C, 0x18 };
+        private int[] treasurePtrOffsets = { 0x78, 0x0, 0x678 };
+        private int[] fragmentsPtrOffsets = { 0x1A8, 0x0, 0x18 };
+        private int[] waterChestsPtrOffsets = { 0x1A8, 0x64, 0x18 };
+        private int[] unchartedChestsPtrOffsets = { 0x158, 0x654, 0x18 };
+        private int[] assassinPtrOffsets = { 0xD4, 0x500, 0x78 };
+        private int[] navalPtrOffsets = { 0x1A8, 0x168, 0x18 };
+        private int[] lettersPtrOffsets = { 0x110, 0x8, 0x678 };
+        private int[] manuscriptsPtrOffsets = { 0x6C, 0xA14, 0x18 };
+        private int[] musicPtrOffsets = { 0x54, 0x58C, 0x18 };
 
         public MainForm()
         {
@@ -101,18 +101,18 @@ namespace Assassin_s_Creed_Route_Tracker
             {
                 try
                 {
-                    int percent = Read<int>((nint)baseAddress, percentPtrOffsets);
-                    int viewpoints = Read<int>((nint)baseAddress, viewpointsPtrOffsets);
-                    int myan = Read<int>((nint)baseAddress, myanPtrOffsets);
-                    int treasure = Read<int>((nint)baseAddress, treasurePtrOffsets);
-                    int fragments = Read<int>((nint)baseAddress, fragmentsPtrOffsets);
-                    int waterChests = Read<int>((nint)baseAddress, waterChestsPtrOffsets);
-                    int unchartedChests = Read<int>((nint)baseAddress, unchartedChestsPtrOffsets);
-                    int assassin = Read<int>((nint)baseAddress, assassinPtrOffsets);
-                    int naval = Read<int>((nint)baseAddress, navalPtrOffsets);
-                    int letters = Read<int>((nint)baseAddress, lettersPtrOffsets);
-                    int manuscripts = Read<int>((nint)baseAddress, manuscriptsPtrOffsets);
-                    int music = Read<int>((nint)baseAddress, musicPtrOffsets);
+                    int percent = Read<int>((nint)baseAddress + 0x49D9774, percentPtrOffsets);
+                    int viewpoints = Read<int>((nint)baseAddress + 0x0002E8D0, viewpointsPtrOffsets);
+                    int myan = Read<int>((nint)baseAddress + 0x0002E8D0, myanPtrOffsets);
+                    int treasure = Read<int>((nint)baseAddress + 0x0051D814, treasurePtrOffsets);
+                    int fragments = Read<int>((nint)baseAddress + 0x0002E8D0, fragmentsPtrOffsets);
+                    int waterChests = Read<int>((nint)baseAddress + 0x0002E8D0, waterChestsPtrOffsets);
+                    int unchartedChests = Read<int>((nint)baseAddress + 0x0153A9DC, unchartedChestsPtrOffsets);
+                    int assassin = Read<int>((nint)baseAddress + 0x0153A9DC, assassinPtrOffsets);
+                    int naval = Read<int>((nint)baseAddress + 0x0002E8D0, navalPtrOffsets);
+                    int letters = Read<int>((nint)baseAddress + 0x017660BC, lettersPtrOffsets);
+                    int manuscripts = Read<int>((nint)baseAddress + 0x0051D814, manuscriptsPtrOffsets);
+                    int music = Read<int>((nint)baseAddress + 0x016B6A7C, musicPtrOffsets);
 
                     percentageLabel.Text = $"Completion Percentage: {percent}%\n" +
                         $"Viewpoints Completed: {viewpoints}\n" +
@@ -148,17 +148,22 @@ namespace Assassin_s_Creed_Route_Tracker
                     Process process = processes[0];
                     processHandle = OpenProcess(PROCESS_WM_READ, false, process.Id);
                     baseAddress = process.MainModule.BaseAddress;
+
+                    Debug.WriteLine($"Connected to process {currentProcess}");
+                    Debug.WriteLine($"Base address: {baseAddress.ToString("X")}");
                 }
                 else
                 {
                     processHandle = IntPtr.Zero;
                     baseAddress = IntPtr.Zero;
+                    Debug.WriteLine($"Process {currentProcess} not found.");
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
                 processHandle = IntPtr.Zero;
                 baseAddress = IntPtr.Zero;
+                Debug.WriteLine($"Error in Connect: {ex.Message}");
             }
         }
 
@@ -166,24 +171,28 @@ namespace Assassin_s_Creed_Route_Tracker
         {
             nint deref = baseAddress;
 
+            Debug.WriteLine($"Starting read with base address: {deref.ToString("X")}");
+
             foreach (int offset in offsets)
             {
-                if (!ReadProcessMemory(processHandle, deref, &deref, sizeof(nint), out nint bytesReadOuter)
-                    || bytesReadOuter != sizeof(nint))
+                if (!ReadProcessMemory(processHandle, deref, &deref, 4, out nint bytesReadOuter) || bytesReadOuter != 4)
                 {
+                    Debug.WriteLine($"Failed to read memory at {deref.ToString("X")}. Bytes read: {bytesReadOuter}");
                     throw new Win32Exception();
                 }
 
+                Debug.WriteLine($"Read pointer value: {deref.ToString("X")}, offset: {offset}");
                 deref += offset;
             }
 
             T result;
-            if (!ReadProcessMemory(processHandle, deref, &result, sizeof(T), out nint bytesReadInner)
-                || bytesReadInner != sizeof(T))
+            if (!ReadProcessMemory(processHandle, deref, &result, sizeof(T), out nint bytesReadInner) || bytesReadInner != sizeof(T))
             {
+                Debug.WriteLine($"Failed to read final value at {deref.ToString("X")}. Bytes read: {bytesReadInner}");
                 throw new Win32Exception();
             }
 
+            Debug.WriteLine($"Successfully read value: {result}");
             return result;
         }
 
