@@ -1,24 +1,29 @@
+using System;
+using System.ComponentModel;
 using System.Diagnostics;
-using ProcessMemory;
+using System.Runtime.InteropServices;
+using System.Windows.Forms;
 
 namespace Assassin_s_Creed_Route_Tracker
 {
-    public partial class MainForm : Form
+    public unsafe partial class MainForm : Form
     {
-        private ProcessMemoryHandler processMemoryHandler;
+        private IntPtr processHandle;
         private string currentProcess;
-        private MultilevelPointer percentPtr;
-        private MultilevelPointer ViewpointsPtr;
-        private MultilevelPointer MyanPtr;
-        private MultilevelPointer TreasurePtr;
-        private MultilevelPointer FragmentsPtr;
-        private MultilevelPointer WaterChestsPtr;
-        private MultilevelPointer UnchartedChestsPtr;
-        private MultilevelPointer AssassinPtr;
-        private MultilevelPointer NavalPtr;
-        private MultilevelPointer LettersPtr;
-        private MultilevelPointer ManuscriptsPtr;
-        private MultilevelPointer MusicPtr;
+        private IntPtr baseAddress;
+
+        private int[] percentPtrOffsets = { 0x49D9774, 0x284 };
+        private int[] viewpointsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x28, 0x18 };
+        private int[] myanPtrOffsets = { 0x0002E8D0, 0x1A8, 0x3C, 0x18 };
+        private int[] treasurePtrOffsets = { 0x0051D814, 0x78, 0x0, 0x678 };
+        private int[] fragmentsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x0, 0x18 };
+        private int[] waterChestsPtrOffsets = { 0x0002E8D0, 0x1A8, 0x64, 0x18 };
+        private int[] unchartedChestsPtrOffsets = { 0x0153A9DC, 0x158, 0x654, 0x18 };
+        private int[] assassinPtrOffsets = { 0x0153A9DC, 0xD4, 0x500, 0x78 };
+        private int[] navalPtrOffsets = { 0x0002E8D0, 0x1A8, 0x168, 0x18 };
+        private int[] lettersPtrOffsets = { 0x014218E8, 0x140, 0x678 };
+        private int[] manuscriptsPtrOffsets = { 0x0051D814, 0x6C, 0xA14, 0x18 };
+        private int[] musicPtrOffsets = { 0x016B6A7C, 0x54, 0x58C, 0x18 };
 
         public MainForm()
         {
@@ -67,6 +72,7 @@ namespace Assassin_s_Creed_Route_Tracker
         {
             ComboBox gameDropdown = (ComboBox)this.Controls[1];
             Label connectionLabel = (Label)this.Controls[0];
+
             string selectedGame = gameDropdown.SelectedItem.ToString();
 
             if (selectedGame == "Assassin's Creed 4")
@@ -80,7 +86,8 @@ namespace Assassin_s_Creed_Route_Tracker
             }
 
             Connect();
-            if (processMemoryHandler != null)
+
+            if (processHandle != IntPtr.Zero)
                 connectionLabel.Text = $"Connected to {selectedGame}";
             else
                 connectionLabel.Text = "Error: Cannot connect to process. Make sure the game is running.";
@@ -89,50 +96,49 @@ namespace Assassin_s_Creed_Route_Tracker
         private void PercentageButton_Click(object sender, EventArgs e)
         {
             Label percentageLabel = (Label)this.Controls[4];
-            if (processMemoryHandler != null && currentProcess == "AC4BFSP.exe")
+
+            if (processHandle != IntPtr.Zero && currentProcess == "AC4BFSP.exe")
             {
                 try
                 {
-                    //The pointers
-                    int percent = percentPtr.DerefInt(0x284);
-                    int Viewpoints = ViewpointsPtr.DerefInt(0x18);
-                    int Myan = MyanPtr.DerefInt(0x18);
-                    int Treasure = TreasurePtr.DerefInt(0xBF8);
-                    int Fragments = FragmentsPtr.DerefInt(0x18);
-                    int WaterChests = WaterChestsPtr.DerefInt(0x18);
-                    int UnchartedChests = UnchartedChestsPtr.DerefInt(0x18);
-                    int Assassin = AssassinPtr.DerefInt(0x498);
-                    int Naval = NavalPtr.DerefInt(0x18);
-                    int Letters = LettersPtr.DerefInt(0x678);
-                    int Manuscripts = ManuscriptsPtr.DerefInt(0x18);
-                    int Music = MusicPtr.DerefInt(0x18);
+                    int percent = Read<int>((nint)baseAddress, percentPtrOffsets);
+                    int viewpoints = Read<int>((nint)baseAddress, viewpointsPtrOffsets);
+                    int myan = Read<int>((nint)baseAddress, myanPtrOffsets);
+                    int treasure = Read<int>((nint)baseAddress, treasurePtrOffsets);
+                    int fragments = Read<int>((nint)baseAddress, fragmentsPtrOffsets);
+                    int waterChests = Read<int>((nint)baseAddress, waterChestsPtrOffsets);
+                    int unchartedChests = Read<int>((nint)baseAddress, unchartedChestsPtrOffsets);
+                    int assassin = Read<int>((nint)baseAddress, assassinPtrOffsets);
+                    int naval = Read<int>((nint)baseAddress, navalPtrOffsets);
+                    int letters = Read<int>((nint)baseAddress, lettersPtrOffsets);
+                    int manuscripts = Read<int>((nint)baseAddress, manuscriptsPtrOffsets);
+                    int music = Read<int>((nint)baseAddress, musicPtrOffsets);
 
                     percentageLabel.Text = $"Completion Percentage: {percent}%\n" +
-                        $"Viewpoints Completed: {Viewpoints}\n" +
-                        $"Myan Stones Collected: {Myan}\n" +
-                        $"Buried Treasure Collected: {Treasure}\n" +
-                        $"AnimusFragments Collected: {Fragments}\n" +
-                        $"WaterChests Collected: {WaterChests}\n" +
-                        $"UnchatredChests Collected: {UnchartedChests}\n" +
-                        $"AssassinContracts Completed: {Assassin}\n" +
-                        $"NavalContracts Completed: {Naval}\n" +
-                        $"LetterBottles Collected: {Letters}\n" +
-                        $"Manuscripts Collected: {Manuscripts}\n" +
-                        $"Music Sheets Collected: {Music}";
-
+                        $"Viewpoints Completed: {viewpoints}\n" +
+                        $"Myan Stones Collected: {myan}\n" +
+                        $"Buried Treasure Collected: {treasure}\n" +
+                        $"AnimusFragments Collected: {fragments}\n" +
+                        $"WaterChests Collected: {waterChests}\n" +
+                        $"UnchatredChests Collected: {unchartedChests}\n" +
+                        $"AssassinContracts Completed: {assassin}\n" +
+                        $"NavalContracts Completed: {naval}\n" +
+                        $"LetterBottles Collected: {letters}\n" +
+                        $"Manuscripts Collected: {manuscripts}\n" +
+                        $"Music Sheets Collected: {music}";
                 }
-                catch (Exception ex)
+                catch (Win32Exception ex)
                 {
                     percentageLabel.Text = $"Error: {ex.Message}";
                 }
             }
-            else if (processMemoryHandler != null && currentProcess == "ACS.exe")
+            else if (processHandle != IntPtr.Zero && currentProcess == "ACS.exe")
                 percentageLabel.Text = "Percentage feature not available for Assassin's Creed Syndicate";
             else
                 percentageLabel.Text = "Not connected to a game";
         }
 
-        private unsafe void Connect()
+        private void Connect()
         {
             try
             {
@@ -140,37 +146,59 @@ namespace Assassin_s_Creed_Route_Tracker
                 if (processes.Length > 0)
                 {
                     Process process = processes[0];
-                    processMemoryHandler = new ProcessMemoryHandler((uint)process.Id);
-
-                    if (processMemoryHandler != null && currentProcess == "AC4BFSP.exe")
-                    {
-                        // Set up the percentage pointer for AC4
-                        percentPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x49D9774));
-                        ViewpointsPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0002E8D0), 0x1A8, 0x28);
-                        MyanPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0002E8D0), 0x1A8, 0x3C);
-                        TreasurePtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x01817920), 0x3AC);
-                        FragmentsPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0002E8D0), 0x1A8, 0x0);
-                        WaterChestsPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0002E8D0), 0x1A8, 0x64);
-                        UnchartedChestsPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0153A9DC), 0x158, 0x654);
-                        AssassinPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x01817920), 0x38C);
-                        NavalPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0002E8D0), 0x1A8, 0x168);
-                        LettersPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x014218E8), 0x140);
-                        ManuscriptsPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x0051D814), 0x6C, 0xA14);
-                        MusicPtr = new MultilevelPointer(processMemoryHandler, (nint*)(process.MainModule?.BaseAddress + 0x016B6A7C), 0x54, 0x58C);
-                    }
+                    processHandle = OpenProcess(PROCESS_WM_READ, false, process.Id);
+                    baseAddress = process.MainModule.BaseAddress;
                 }
                 else
                 {
-                    processMemoryHandler = null;
-                    percentPtr = null;
+                    processHandle = IntPtr.Zero;
+                    baseAddress = IntPtr.Zero;
                 }
             }
             catch (Exception)
             {
-                processMemoryHandler = null;
-                percentPtr = null;
+                processHandle = IntPtr.Zero;
+                baseAddress = IntPtr.Zero;
             }
         }
 
+        private T Read<T>(nint baseAddress, int[] offsets) where T : unmanaged
+        {
+            nint deref = baseAddress;
+
+            foreach (int offset in offsets)
+            {
+                if (!ReadProcessMemory(processHandle, deref, &deref, sizeof(nint), out nint bytesReadOuter)
+                    || bytesReadOuter != sizeof(nint))
+                {
+                    throw new Win32Exception();
+                }
+
+                deref += offset;
+            }
+
+            T result;
+            if (!ReadProcessMemory(processHandle, deref, &result, sizeof(T), out nint bytesReadInner)
+                || bytesReadInner != sizeof(T))
+            {
+                throw new Win32Exception();
+            }
+
+            return result;
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
+
+        [DllImport("kernel32", SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool ReadProcessMemory(
+            nint hProcess,
+            nint lpBaseAddress,
+            void* lpBuffer,
+            nint nSize,
+            out nint lpNumberOfBytesRead);
+
+        private const int PROCESS_WM_READ = 0x0010;
     }
 }
