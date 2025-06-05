@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Reflection.Metadata;
@@ -54,24 +55,23 @@ namespace Assassin_s_Creed_Route_Tracker
     // This reads all the game stats from memory using addresses and offsets
     // It updates automatically every second to keep the UI in sync with the game
     // The core class that powers the entire tracking functionality
-    public unsafe class GameStats
+    public abstract unsafe class GameStatsBase : IGameStats
     {
-        // Add architecture field
+        // Architecture field
         private readonly bool _is64BitProcess;
 
         // Update constructor to accept architecture info
-        public GameStats(IntPtr processHandle, IntPtr baseAddress, bool is64BitProcess)
+        public GameStatsBase(IntPtr processHandle, IntPtr baseAddress, bool is64BitProcess)
         {
             this.processHandle = processHandle;
             this.baseAddress = baseAddress;
-            this.collectiblesBaseAddress = (nint)baseAddress + 0x026BEAC0;
             _is64BitProcess = is64BitProcess;
             Debug.WriteLine($"GameStats initialized for {(is64BitProcess ? "64-bit" : "32-bit")} process");
         }
 
-        // Your existing fields would go here
-        private readonly IntPtr processHandle;
-        private readonly IntPtr baseAddress;
+        // Change private fields to protected so derived classes can access them
+        protected readonly IntPtr processHandle;
+        protected readonly IntPtr baseAddress;
 
         // Timer-related fields for automatic stat updates
         private System.Threading.CancellationTokenSource? _updateCancellationTokenSource;
@@ -84,58 +84,12 @@ namespace Assassin_s_Creed_Route_Tracker
         public event EventHandler<StatsUpdatedEventArgs>? StatsUpdated;
 
         // ==========FORMAL COMMENT=========
-        // Memory offset arrays and constants for accessing game statistics
-        // Special cases (percent, percentFloat, forts) use unique memory paths
-        // Most collectibles share a common base address and offset pattern with varying third offsets
-        // ==========MY NOTES==============
-        // These offsets are our map to find values in the game's memory
-        // Most collectibles follow the same pattern (only third offset changes)
-        // A few values like completion percentage and forts need special handling
-        private readonly int[] percentPtrOffsets = [0x284];
-        private readonly int[] percentFtPtrOffsets = [0x74];
-        private readonly int[] fortsPtrOffsets = [0x7F0, 0xD68, 0xD70, 0x30];
-
-        // Pre-calculated base address for most collectibles to avoid repeated calculations
-        private readonly nint collectiblesBaseAddress;
-
-        // Third offsets for collectibles totals counters
-        private const int ViewpointsThirdOffset = -0x1B30;
-        private const int MyanThirdOffset = -0x1B1C;
-        private const int TreasureThirdOffset = -0xBB8;
-        private const int FragmentsThirdOffset = -0x1B58;
-        private const int AssassinThirdOffset = -0xDD4;
-        private const int NavalThirdOffset = -0x19F0;
-        private const int LettersThirdOffset = -0x04EC;
-        private const int ManuscriptsThirdOffset = -0x334;
-        private const int MusicThirdOffset = 0x424;
-
-        // Offsets that are used for most collectibles
-        private const int FirstOffset = 0x2D0;
-        private const int SecondOffset = 0x8BC;
-        private const int LastOffset = 0x18;
-
-        //step offset for collectibles that are stored as individual flags
-        private const int OffsetStep = 0x14;
-
-        // The start and ending offsets for Chests
-        // The first offset is for the first address that has one of the Chest address
-        // The end offset is the offset for the last Chests address
-        private const int ChestStartOffset = 0x67C;
-        private const int ChestEndOffset = 0xA8C;
-
-        // The start and ending offsets for Taverns
-        // The first offset is for the first address that has one of the taversn address
-        // The end offset is the offset for the last tavern address
-        private const int TavernStartOffset = 0x319C;
-        private const int TavernEndOffset = 0x3228;
-
-        // ==========FORMAL COMMENT=========
         // Generic method to read values from game memory
         // Follows chains of pointers using the provided offsets
         // ==========MY NOTES==============
         // This is the low-level function that actually reads from memory
         // It follows the trail of addresses to find the specific value we want
-        private unsafe T Read<T>(nint baseAddress, int[] offsets) where T : unmanaged
+        protected unsafe T Read<T>(nint baseAddress, int[] offsets) where T : unmanaged
         {
             // Call the appropriate read method based on architecture
             return _is64BitProcess
@@ -144,7 +98,7 @@ namespace Assassin_s_Creed_Route_Tracker
         }
 
         // Original 32-bit pointer handling (your current code)
-        private unsafe T Read32<T>(nint baseAddress, int[] offsets) where T : unmanaged
+        protected unsafe T Read32<T>(nint baseAddress, int[] offsets) where T : unmanaged
         {
             nint address = baseAddress;
             Debug.WriteLine($"[32-bit] Reading memory at base address: {baseAddress:X}");
@@ -174,7 +128,7 @@ namespace Assassin_s_Creed_Route_Tracker
         }
 
         // New 64-bit pointer handling
-        private unsafe T Read64<T>(nint baseAddress, int[] offsets) where T : unmanaged
+        protected unsafe T Read64<T>(nint baseAddress, int[] offsets) where T : unmanaged
         {
             nint address = baseAddress;
             Debug.WriteLine($"[64-bit] Reading memory at base address: {baseAddress:X}");
@@ -204,64 +158,33 @@ namespace Assassin_s_Creed_Route_Tracker
             return value;
         }
 
-        // ==========FORMAL COMMENT=========
-        // Helper method to read collectibles using shared memory pattern
-        // Uses common base address and offset structure with specific third offset
-        // ==========MY NOTES==============
-        // Simplifies reading collectibles that follow the standard pattern
-        // Makes the code cleaner by removing duplicated memory reading logic
-        private int ReadCollectible(int thirdOffset)
-        {
-            return Read<int>(collectiblesBaseAddress, [FirstOffset, SecondOffset, thirdOffset, LastOffset]);
-        }
+        // Make GetStats() abstract so each game must implement it
+        public abstract (int Percent, float PercentFloat, int Viewpoints, int Myan, int Treasure,
+            int Fragments, int Assassin, int Naval, int Letters, int Manuscripts, int Music,
+            int Forts, int Taverns, int TotalChests) GetStats();
 
-        // ==========FORMAL COMMENT=========
-        // Helper method to count collectibles that are stored as individual flags
-        // Iterates through a range of third offsets and sums their values
-        // ==========MY NOTES==============
-        // Used for things like chests and taverns that have many individual locations
-        // Each location has its own memory address with a predictable pattern
-        private int CountCollectibles(int startOffset, int endOffset)
+        // Add the new interface method
+        public virtual Dictionary<string, object> GetStatsAsDictionary()
         {
-            int count = 0;
-            for (int thirdOffset = startOffset; thirdOffset <= endOffset; thirdOffset += OffsetStep)
+            var stats = GetStats();
+
+            return new Dictionary<string, object>
             {
-                count += ReadCollectible(thirdOffset);
-            }
-            return count;
-        }
-
-        // ==========FORMAL COMMENT=========
-        // Retrieves all game statistics from memory in a single operation
-        // Handles both special case stats and standard collectibles with appropriate methods
-        // Returns a tuple containing all available game progress metrics
-        // ==========MY NOTES==============
-        // Reads all the different stats at once and returns them as one package
-        // Uses the simplified helper for most collectibles and special handling for others
-        // This is the main method that gets called when displaying or updating stats
-        public (int Percent, float PercentFloat, int Viewpoints, int Myan, int Treasure, int Fragments, int Assassin, int Naval, int Letters, int Manuscripts, int Music, int Forts, int Taverns, int TotalChests) GetStats()
-        {
-            // reading collectibles not using simplified helper method
-            int percent = Read<int>((nint)baseAddress + 0x49D9774, percentPtrOffsets);
-            float percentfloat = Read<float>((nint)baseAddress + 0x049F1EE8, percentFtPtrOffsets);
-            int forts = Read<int>((nint)baseAddress + 0x026BE51C, fortsPtrOffsets);
-
-            // Read collectibles using the simplified helper method
-            int viewpoints = ReadCollectible(ViewpointsThirdOffset);
-            int myan = ReadCollectible(MyanThirdOffset);
-            int treasure = ReadCollectible(TreasureThirdOffset);
-            int fragments = ReadCollectible(FragmentsThirdOffset);
-            int assassin = ReadCollectible(AssassinThirdOffset);
-            int naval = ReadCollectible(NavalThirdOffset);
-            int letters = ReadCollectible(LettersThirdOffset);
-            int manuscripts = ReadCollectible(ManuscriptsThirdOffset);
-            int music = ReadCollectible(MusicThirdOffset);
-
-            // Count collectibles that are stored as multiple individual flags
-            int taverns = CountCollectibles(TavernStartOffset, TavernEndOffset);
-            int totalChests = CountCollectibles(ChestStartOffset, ChestEndOffset);
-
-            return (percent, percentfloat, viewpoints, myan, treasure, fragments, assassin, naval, letters, manuscripts, music, forts, taverns, totalChests);
+                ["Completion Percentage"] = stats.Percent,
+                ["Exact Percentage"] = Math.Round(stats.PercentFloat, 2),
+                ["Viewpoints Completed"] = stats.Viewpoints,
+                ["Myan Stones Collected"] = stats.Myan,
+                ["Buried Treasure Collected"] = stats.Treasure,
+                ["AnimusFragments Collected"] = stats.Fragments,
+                ["AssassinContracts Completed"] = stats.Assassin,
+                ["NavalContracts Completed"] = stats.Naval,
+                ["LetterBottles Collected"] = stats.Letters,
+                ["Manuscripts Collected"] = stats.Manuscripts,
+                ["Music Sheets Collected"] = stats.Music,
+                ["Forts Captured"] = stats.Forts,
+                ["Taverns unlocked"] = stats.Taverns,
+                ["Total Chests Collected"] = stats.TotalChests
+            };
         }
 
         // ==========FORMAL COMMENT=========
@@ -299,29 +222,16 @@ namespace Assassin_s_Creed_Route_Tracker
         {
             try
             {
-                // Check if we should still be updating
                 if (!_isUpdating || _updateTimer == null)
                     return;
 
-                // Get current stats
-                (int Percent, float PercentFloat, int Viewpoints, int Myan, int Treasure, int Fragments, int Assassin, int Naval, int Letters, int Manuscripts, int Music, int Forts, int Taverns, int TotalChests) = GetStats();
+                var stats = GetStats(); // This now calls the derived class implementation
 
-                // Notify listeners (sync invoke to avoid thread issues)
                 StatsUpdated?.Invoke(this, new StatsUpdatedEventArgs(
-                    Percent,
-                    PercentFloat,
-                    Viewpoints,
-                    Myan,
-                    Treasure,
-                    Fragments,
-                    Assassin,
-                    Naval,
-                    Letters,
-                    Manuscripts,
-                    Music,
-                    Forts,
-                    Taverns,
-                    TotalChests));
+                    stats.Percent, stats.PercentFloat, stats.Viewpoints, stats.Myan,
+                    stats.Treasure, stats.Fragments, stats.Assassin, stats.Naval,
+                    stats.Letters, stats.Manuscripts, stats.Music, stats.Forts,
+                    stats.Taverns, stats.TotalChests));
             }
             catch (Exception ex)
             {
