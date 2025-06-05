@@ -5,7 +5,7 @@ using System.Diagnostics;
 using System.Reflection.Metadata;
 using System.Runtime.InteropServices;
 
-namespace Assassin_s_Creed_Route_Tracker
+namespace Route_Tracker
 {
     // ==========FORMAL COMMENT=========
     // Event args class that carries game statistics data to event subscribers
@@ -57,16 +57,12 @@ namespace Assassin_s_Creed_Route_Tracker
     // The core class that powers the entire tracking functionality
     public abstract unsafe class GameStatsBase : IGameStats
     {
-        // Architecture field
-        private readonly bool _is64BitProcess;
 
         // Update constructor to accept architecture info
-        public GameStatsBase(IntPtr processHandle, IntPtr baseAddress, bool is64BitProcess)
+        public GameStatsBase(IntPtr processHandle, IntPtr baseAddress)
         {
             this.processHandle = processHandle;
             this.baseAddress = baseAddress;
-            _is64BitProcess = is64BitProcess;
-            Debug.WriteLine($"GameStats initialized for {(is64BitProcess ? "64-bit" : "32-bit")} process");
         }
 
         // Change private fields to protected so derived classes can access them
@@ -89,72 +85,35 @@ namespace Assassin_s_Creed_Route_Tracker
         // ==========MY NOTES==============
         // This is the low-level function that actually reads from memory
         // It follows the trail of addresses to find the specific value we want
+        // Simplify Read to just use the original method
         protected unsafe T Read<T>(nint baseAddress, int[] offsets) where T : unmanaged
         {
-            // Call the appropriate read method based on architecture
-            return _is64BitProcess
-                ? Read64<T>(baseAddress, offsets)
-                : Read32<T>(baseAddress, offsets);
-        }
-
-        // Original 32-bit pointer handling (your current code)
-        protected unsafe T Read32<T>(nint baseAddress, int[] offsets) where T : unmanaged
-        {
             nint address = baseAddress;
-            Debug.WriteLine($"[32-bit] Reading memory at base address: {baseAddress:X}");
+            Debug.WriteLine($"Reading memory at base address: {baseAddress:X}");
 
-            int pointer_size = 4;
+            int pointer_size = 4; // Always use 32-bit
             foreach (int offset in offsets)
             {
-                if (!ReadProcessMemory(processHandle, address, &address, pointer_size, out nint bytesReads) || bytesReads != pointer_size || address == IntPtr.Zero)
+                if (!ReadProcessMemory(processHandle, address, &address, pointer_size, out nint bytesReads) ||
+                    bytesReads != pointer_size || address == IntPtr.Zero)
                 {
-                    Debug.WriteLine($"[32-bit] Failed to read memory address at offset {offset:X}");
+                    Debug.WriteLine($"Failed to read memory address at offset {offset:X}");
                     return default;
                 }
                 address += offset;
-                Debug.WriteLine($"[32-bit] Address after applying offset {offset:X}: {address:X}");
+                Debug.WriteLine($"Address after applying offset {offset:X}: {address:X}");
             }
 
             T value;
             int size = sizeof(T);
-            if (!ReadProcessMemory(processHandle, address, &value, size, out nint bytesRead) || bytesRead != size)
+            if (!ReadProcessMemory(processHandle, address, &value, size, out nint bytesRead) ||
+                bytesRead != size)
             {
-                Debug.WriteLine($"[32-bit] Failed to read value from memory at address {address:X}");
+                Debug.WriteLine($"Failed to read value from memory at address {address:X}");
                 return default;
             }
 
-            Debug.WriteLine($"[32-bit] Read value from memory at address {address:X}: {value}");
-            return value;
-        }
-
-        // New 64-bit pointer handling
-        protected unsafe T Read64<T>(nint baseAddress, int[] offsets) where T : unmanaged
-        {
-            nint address = baseAddress;
-            Debug.WriteLine($"[64-bit] Reading memory at base address: {baseAddress:X}");
-
-            int pointer_size = 8; // 64-bit pointers are 8 bytes
-            foreach (int offset in offsets)
-            {
-                long pointer = 0;
-                if (!ReadProcessMemory(processHandle, address, &pointer, pointer_size, out nint bytesReads) || bytesReads != pointer_size || pointer == 0)
-                {
-                    Debug.WriteLine($"[64-bit] Failed to read memory address at offset {offset:X}");
-                    return default;
-                }
-                address = (nint)pointer + offset;
-                Debug.WriteLine($"[64-bit] Address after applying offset {offset:X}: {address:X}");
-            }
-
-            T value;
-            int size = sizeof(T);
-            if (!ReadProcessMemory(processHandle, address, &value, size, out nint bytesRead) || bytesRead != size)
-            {
-                Debug.WriteLine($"[64-bit] Failed to read value from memory at address {address:X}");
-                return default;
-            }
-
-            Debug.WriteLine($"[64-bit] Read value from memory at address {address:X}: {value}");
+            Debug.WriteLine($"Read value from memory at address {address:X}: {value}");
             return value;
         }
 
@@ -280,3 +239,4 @@ namespace Assassin_s_Creed_Route_Tracker
 
    
 }
+
