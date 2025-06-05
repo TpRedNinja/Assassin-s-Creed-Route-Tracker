@@ -1,16 +1,16 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 
-namespace Assassin_s_Creed_Route_Tracker
+namespace Route_Tracker
 {
     public unsafe class GoW2018GameStats : GameStatsBase
     {
         // Pre-calculated base address for most collectibles to avoid repeated calculations
         private readonly nint collectiblesBaseAddress;
 
-        public GoW2018GameStats(IntPtr processHandle, IntPtr baseAddress, bool is64BitProcess)
-            : base(processHandle, baseAddress, is64BitProcess)
+        public GoW2018GameStats(IntPtr processHandle, IntPtr baseAddress)
+    :   base(processHandle, baseAddress)
         {
             // Will be properly implemented later
             this.collectiblesBaseAddress = (nint)baseAddress;
