@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -22,6 +23,20 @@ namespace Route_Tracker
 
         // Pre-calculated base address for most collectibles to avoid repeated calculations
         private readonly nint collectiblesBaseAddress;
+
+        // Add fields to track percentage-based activities
+        private float lastPercentageValue = 0f;
+        private int completedStoryMissions = 0;
+        private int completedTemplarHunts = 0;
+        private int defeatedLegendaryShips = 0;
+
+        // Exact percentage values to check
+        private const float LEGENDARY_SHIP_PERCENT = 0.18750f;
+        private const float TEMPLAR_HUNT_MIN = 0.38579f;
+        private const float TEMPLAR_HUNT_MAX = 0.38582f;
+        private const float STORY_MISSION_MIN = 0.66666f;
+        private const float STORY_MISSION_MAX = 1.66668f;
+        private const float DETECTION_THRESHOLD = 0.00001f;
 
         // Third offsets for collectibles totals counters
         private const int ViewpointsThirdOffset = -0x1B30;
@@ -54,9 +69,8 @@ namespace Route_Tracker
         private const int TavernStartOffset = 0x319C;
         private const int TavernEndOffset = 0x3228;
         public AC4GameStats(IntPtr processHandle, IntPtr baseAddress)
-    :   base(processHandle, baseAddress)
+        : base(processHandle, baseAddress)
         {
-            // Calculate the AC4-specific collectibles base address
             this.collectiblesBaseAddress = (nint)baseAddress + 0x026BEAC0;
         }
 
@@ -88,16 +102,17 @@ namespace Route_Tracker
         }
 
         // Implementation of GetStats for AC4
+        // Modified GetStats implementation with percentage change detection
         public override (int Percent, float PercentFloat, int Viewpoints, int Myan, int Treasure,
             int Fragments, int Assassin, int Naval, int Letters, int Manuscripts, int Music,
             int Forts, int Taverns, int TotalChests) GetStats()
         {
-            // Reading collectibles not using simplified helper method
+            // Reading collectibles using existing methods
             int percent = Read<int>((nint)baseAddress + 0x49D9774, percentPtrOffsets);
-            float percentfloat = Read<float>((nint)baseAddress + 0x049F1EE8, percentFtPtrOffsets);
-            int forts = Read<int>((nint)baseAddress + 0x026BE51C, fortsPtrOffsets);
+            float percentFloat = Read<float>((nint)baseAddress + 0x049F1EE8, percentFtPtrOffsets);
+            int forts = Read<int>((nint)baseAddress + 0x026C0A28, fortsPtrOffsets);
 
-            // Read collectibles using the simplified helper method
+            // Read all other collectibles
             int viewpoints = ReadCollectible(ViewpointsThirdOffset);
             int myan = ReadCollectible(MyanThirdOffset);
             int treasure = ReadCollectible(TreasureThirdOffset);
@@ -107,13 +122,69 @@ namespace Route_Tracker
             int letters = ReadCollectible(LettersThirdOffset);
             int manuscripts = ReadCollectible(ManuscriptsThirdOffset);
             int music = ReadCollectible(MusicThirdOffset);
-
-            // Count collectibles that are stored as multiple individual flags
             int taverns = CountCollectibles(TavernStartOffset, TavernEndOffset);
             int totalChests = CountCollectibles(ChestStartOffset, ChestEndOffset);
 
-            return (percent, percentfloat, viewpoints, myan, treasure, fragments, assassin, naval,
+            // Detect percentage-based activities
+            DetectSpecialActivities(percentFloat);
+
+            // Return all the stats (including the basic ones that we got from memory)
+            return (percent, percentFloat, viewpoints, myan, treasure, fragments, assassin, naval,
                 letters, manuscripts, music, forts, taverns, totalChests);
+        }
+
+        // New method to detect special activities based on percentage changes
+        private void DetectSpecialActivities(float currentPercentage)
+        {
+            // If this is the first read, just store the value
+            if (lastPercentageValue == 0f)
+            {
+                lastPercentageValue = currentPercentage;
+                return;
+            }
+
+            // Calculate the change since last reading
+            float percentageDelta = currentPercentage - lastPercentageValue;
+
+            // Only process positive changes (completed activities)
+            if (percentageDelta > 0)
+            {
+                // Log the percentage change for debugging
+                Debug.WriteLine($"Percentage delta: {percentageDelta:F10}");
+
+                // Detect legendary ships (exact match with small tolerance)
+                if (Math.Abs(percentageDelta - LEGENDARY_SHIP_PERCENT) < DETECTION_THRESHOLD)
+                {
+                    defeatedLegendaryShips++;
+                    Debug.WriteLine($"Legendary ship defeated! Total: {defeatedLegendaryShips}");
+                }
+                // Detect Templar hunts (within range)
+                else if (percentageDelta >= TEMPLAR_HUNT_MIN && percentageDelta <= TEMPLAR_HUNT_MAX)
+                {
+                    completedTemplarHunts++;
+                    Debug.WriteLine($"Templar hunt completed! Total: {completedTemplarHunts}");
+                }
+                // Detect story missions (within broader range)
+                else if (percentageDelta >= STORY_MISSION_MIN && percentageDelta <= STORY_MISSION_MAX)
+                {
+                    completedStoryMissions++;
+                    Debug.WriteLine($"Story mission completed! Total: {completedStoryMissions}");
+                }
+                // For significant changes that don't match known patterns
+                else if (percentageDelta > 0.1f)
+                {
+                    Debug.WriteLine($"Unrecognized percentage change: {percentageDelta:F10}");
+                }
+            }
+
+            // Update the last value for the next comparison
+            lastPercentageValue = currentPercentage;
+        }
+
+        // Method to get the special activity counts
+        public (int StoryMissions, int TemplarHunts, int LegendaryShips) GetSpecialActivityCounts()
+        {
+            return (completedStoryMissions, completedTemplarHunts, defeatedLegendaryShips);
         }
     }
 }
