@@ -1,10 +1,10 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Assassin_s_Creed_Route_Tracker
+namespace Route_Tracker
 {
     public unsafe class AC4GameStats : GameStatsBase
     {
@@ -53,8 +53,8 @@ namespace Assassin_s_Creed_Route_Tracker
         // The end offset is the offset for the last tavern address
         private const int TavernStartOffset = 0x319C;
         private const int TavernEndOffset = 0x3228;
-        public AC4GameStats(IntPtr processHandle, IntPtr baseAddress, bool is64BitProcess)
-            : base(processHandle, baseAddress, is64BitProcess)
+        public AC4GameStats(IntPtr processHandle, IntPtr baseAddress)
+    :   base(processHandle, baseAddress)
         {
             // Calculate the AC4-specific collectibles base address
             this.collectiblesBaseAddress = (nint)baseAddress + 0x026BEAC0;
