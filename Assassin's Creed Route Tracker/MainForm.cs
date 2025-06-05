@@ -5,9 +5,9 @@ using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Assassin_s_Creed_Route_Tracker.Properties;
+using Route_Tracker.Properties;
 
-namespace Assassin_s_Creed_Route_Tracker
+namespace Route_Tracker
 {
     // ==========FORMAL COMMENT=========
     // Main form class that provides the user interface for the Assassin's Creed Route Tracker
@@ -17,6 +17,32 @@ namespace Assassin_s_Creed_Route_Tracker
     // to showing the stats and managing settings
     public partial class MainForm : Form
     {
+        // Theme class for consistent styling throughout the application
+        private static class AppTheme
+        {
+            // Colors
+            public static readonly Color BackgroundColor = Color.Black;
+            public static readonly Color TextColor = Color.White;
+            public static readonly Color AccentColor = Color.DarkRed; // Good for highlights/buttons
+
+            // Fonts
+            public static readonly Font DefaultFont = new("Segoe UI", 9f);
+            public static readonly Font HeaderFont = new("Segoe UI", 12f, FontStyle.Bold);
+            public static readonly Font StatsFont = new("Segoe UI", 14f);
+
+            // Spacing
+            public const int StandardPadding = 10;
+            public const int StandardMargin = 5;
+
+            // Apply theme to a control
+            public static void ApplyTo(Control control)
+            {
+                control.BackColor = BackgroundColor;
+                control.ForeColor = TextColor;
+                control.Font = DefaultFont;
+            }
+        }
+
         // ==========FORMAL COMMENT=========
         // Fields for process interaction and game memory access
         // ==========MY NOTES==============
@@ -53,26 +79,44 @@ namespace Assassin_s_Creed_Route_Tracker
             this.FormClosing += MainForm_FormClosing;
         }
 
-        // ==========FORMAL COMMENT=========
-        // Creates all custom UI components for the application interface
-        // Sets up the menu, tabs, buttons, and other controls
-        // ==========MY NOTES==============
-        // This builds all the buttons, tabs, and other stuff you see in the app
         [SupportedOSPlatform("windows6.1")]
         private void InitializeCustomComponents()
         {
-            this.Text = "Assassin's Creed Route Tracker";
-            this.BackColor = System.Drawing.Color.Black;
-            this.ForeColor = System.Drawing.Color.White;
+            this.Text = "Route Tracker";
+            AppTheme.ApplyTo(this);
 
+            CreateMainMenu();
+            SetupTabs();
+            InitializeHiddenControls();
+        }
+
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateMainMenu()
+        {
             // Create and configure the MenuStrip
             MenuStrip menuStrip = new()
             {
-                Dock = DockStyle.Top, // Dock the MenuStrip at the top of the form
-                BackColor = System.Drawing.Color.Black,
-                ForeColor = System.Drawing.Color.White
+                Dock = DockStyle.Top,
+                BackColor = AppTheme.BackgroundColor,
+                ForeColor = AppTheme.TextColor
             };
 
+            // Create settings menu with sub-items
+            CreateSettingsMenu(menuStrip);
+
+            // Create tab navigation buttons
+            CreateTabButtons(menuStrip);
+
+            // Create connection controls
+            CreateConnectionControls(menuStrip);
+
+            this.MainMenuStrip = menuStrip;
+            this.Controls.Add(menuStrip);
+        }
+
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateSettingsMenu(MenuStrip menuStrip)
+        {
             // Create and configure the Settings menu item
             ToolStripMenuItem settingsMenuItem = new("Settings");
 
@@ -93,7 +137,11 @@ namespace Assassin_s_Creed_Route_Tracker
 
             // Add the Settings menu item to the MenuStrip
             menuStrip.Items.Add(settingsMenuItem);
+        }
 
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateTabButtons(MenuStrip menuStrip)
+        {
             // Create and configure the Stats tab button
             ToolStripButton statsTabButton = new("Stats");
             statsTabButton.Click += (sender, e) => tabControl.SelectedTab = statsTabPage;
@@ -103,7 +151,11 @@ namespace Assassin_s_Creed_Route_Tracker
             ToolStripButton routeTabButton = new("Route");
             routeTabButton.Click += (sender, e) => tabControl.SelectedTab = routeTabPage;
             menuStrip.Items.Add(routeTabButton);
+        }
 
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateConnectionControls(MenuStrip menuStrip)
+        {
             // Create and configure the connection label
             ToolStripLabel connectionLabel = new()
             {
@@ -113,7 +165,7 @@ namespace Assassin_s_Creed_Route_Tracker
 
             // Create and configure the game dropdown
             ToolStripComboBox gameDropdown = new();
-            gameDropdown.Items.AddRange(["", "Assassin's Creed 4", "Assassin's Creed Syndicate"]);
+            gameDropdown.Items.AddRange(["", "Assassin's Creed 4", "God of War 2018"]);
             gameDropdown.SelectedIndex = 0;
             menuStrip.Items.Add(gameDropdown);
 
@@ -121,50 +173,21 @@ namespace Assassin_s_Creed_Route_Tracker
             ToolStripButton connectButton = new("Connect to Game");
             connectButton.Click += ConnectButton_Click;
             menuStrip.Items.Add(connectButton);
+        }
 
-            // Set the MenuStrip as the main menu strip of the form
-            this.MainMenuStrip = menuStrip;
-
-            // Add the MenuStrip to the form's controls
-            this.Controls.Add(menuStrip);
-
+        [SupportedOSPlatform("windows6.1")]
+        private void SetupTabs()
+        {
             // Create and configure the TabControl
             tabControl = new TabControl
             {
                 Dock = DockStyle.Fill
             };
+            AppTheme.ApplyTo(tabControl);
 
-            // Create and configure the Stats TabPage
-            statsTabPage = new TabPage("Stats")
-            {
-                BackColor = System.Drawing.Color.Black,
-                ForeColor = System.Drawing.Color.White
-            };
-
-            Button percentageButton = new()
-            {
-                Text = "Stats",
-                Location = new System.Drawing.Point(50, 10)
-            };
-            percentageButton.Click += PercentageButton_Click;
-            statsTabPage.Controls.Add(percentageButton);
-
-            Label percentageLabel = new()
-            {
-                Name = "percentageLabel",
-                Text = "",
-                Location = new System.Drawing.Point(50, 50),
-                AutoSize = true
-            };
-            percentageLabel.Font = new Font(percentageLabel.Font.FontFamily, 14); // Set default font size to 14
-            statsTabPage.Controls.Add(percentageLabel);
-
-            // Create and configure the Route TabPage
-            routeTabPage = new TabPage("Route")
-            {
-                BackColor = System.Drawing.Color.Black,
-                ForeColor = System.Drawing.Color.White
-            };
+            // Create the tabs
+            CreateStatsTab();
+            CreateRouteTab();
 
             // Add the TabPages to the TabControl
             tabControl.TabPages.Add(statsTabPage);
@@ -172,24 +195,243 @@ namespace Assassin_s_Creed_Route_Tracker
 
             // Add the TabControl to the form's controls
             this.Controls.Add(tabControl);
+        }
 
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateStatsTab()
+        {
+            // Create and configure the Stats TabPage
+            statsTabPage = new TabPage("Stats");
+            AppTheme.ApplyTo(statsTabPage);
+
+            // Use TableLayoutPanel for better layout management
+            TableLayoutPanel statsLayout = new()
+            {
+                Dock = DockStyle.Fill,
+                ColumnCount = 3,  // Left margin, content, right margin
+                RowCount = 2,     // Button row, stats display row
+                Padding = new Padding(AppTheme.StandardPadding)
+            };
+            AppTheme.ApplyTo(statsLayout);
+
+            // Configure column styles - center content with margins on sides
+            statsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 5F));   // Left margin
+            statsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 90F));  // Content
+            statsLayout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 5F));   // Right margin
+
+            // Set row styles
+            statsLayout.RowStyles.Add(new RowStyle(SizeType.AutoSize));           // Button row
+            statsLayout.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));      // Stats display
+
+            // Top section for the button - but in a FlowLayoutPanel to center it
+            FlowLayoutPanel buttonPanel = new()
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true
+            };
+            AppTheme.ApplyTo(buttonPanel);
+
+            // Create button with proper size
+            Button percentageButton = new()
+            {
+                Text = "Stats",
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, AppTheme.StandardMargin)
+            };
+            percentageButton.Click += PercentageButton_Click;
+            buttonPanel.Controls.Add(percentageButton);
+
+            // Add button panel to layout in the center column of the first row
+            statsLayout.Controls.Add(buttonPanel, 1, 0);
+
+            // Bottom section for the stats display - in the center column
+            Label percentageLabel = new()
+            {
+                Name = "percentageLabel",
+                Text = "",
+                Dock = DockStyle.Fill,
+                AutoSize = true,
+                Font = AppTheme.StatsFont
+            };
+            statsLayout.Controls.Add(percentageLabel, 1, 1);
+
+            // Add layout to the tab
+            statsTabPage.Controls.Add(statsLayout);
+        }
+
+        [SupportedOSPlatform("windows6.1")]
+        private void CreateRouteTab()
+        {
+            // Create and configure the Route TabPage
+            routeTabPage = new TabPage("Route");
+            routeTabPage.BackColor = Color.Black;
+
+            // Create the DataGridView for route entries
+            var routeGrid = CreateRouteGridView();
+
+            // Add the grid to the tabpage
+            routeTabPage.Controls.Add(routeGrid);
+
+            // Load route data - this could happen after routeManager is initialized in ConnectButton_Click
+            LoadRouteData(routeGrid);
+        }
+
+        private DataGridView CreateRouteGridView()
+        {
+            // Create a DataGridView for displaying route entries
+            DataGridView routeGrid = new DataGridView
+            {
+                Name = "routeGrid",
+                Dock = DockStyle.Fill,
+                BackgroundColor = Color.Black,
+                ForeColor = Color.White,
+                GridColor = Color.FromArgb(80, 80, 80),
+                ReadOnly = true,
+                AllowUserToAddRows = false,
+                AllowUserToDeleteRows = false,
+                RowHeadersVisible = false,
+                SelectionMode = DataGridViewSelectionMode.FullRowSelect,
+                MultiSelect = false,
+                Font = new Font("Segoe UI", 11f),
+                RowTemplate = { Height = 30 },
+                AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None,
+                BorderStyle = BorderStyle.None,
+                CellBorderStyle = DataGridViewCellBorderStyle.Single
+            };
+
+            ConfigureRouteGridColumns(routeGrid);
+            ApplyRouteGridStyling(routeGrid);
+
+            return routeGrid;
+        }
+
+        private void ConfigureRouteGridColumns(DataGridView grid)
+        {
+            // Configure columns - with item first, completion status second
+            DataGridViewTextBoxColumn itemColumn = new DataGridViewTextBoxColumn
+            {
+                Name = "Item",
+                HeaderText = "", // No header text
+                ReadOnly = true,
+                AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Padding = new Padding(10, 5, 5, 5),
+                    BackColor = Color.Black,
+                    ForeColor = Color.White
+                }
+            };
+
+            // Use text column for completion status
+            DataGridViewTextBoxColumn completedColumn = new DataGridViewTextBoxColumn
+            {
+                Name = "Completed",
+                HeaderText = "",
+                Width = 50,
+                ReadOnly = true,
+                DefaultCellStyle = new DataGridViewCellStyle
+                {
+                    Alignment = DataGridViewContentAlignment.MiddleCenter,
+                    Font = new Font("Segoe UI", 12f, FontStyle.Bold),
+                    BackColor = Color.Black,
+                    ForeColor = Color.White
+                }
+            };
+
+            // Add columns in correct order
+            grid.Columns.Add(itemColumn);
+            grid.Columns.Add(completedColumn);
+        }
+
+        private void ApplyRouteGridStyling(DataGridView grid)
+        {
+            // Apply theme colors to the grid
+            grid.EnableHeadersVisualStyles = false;
+            grid.ColumnHeadersDefaultCellStyle.BackColor = Color.Black;
+            grid.ColumnHeadersDefaultCellStyle.ForeColor = Color.White;
+            grid.RowHeadersDefaultCellStyle.BackColor = Color.Black;
+            grid.RowsDefaultCellStyle.BackColor = Color.Black;
+            grid.RowsDefaultCellStyle.ForeColor = Color.White;
+
+            // No alternating row colors
+            grid.AlternatingRowsDefaultCellStyle.BackColor = Color.Black;
+
+            // Make the row selection very subtle
+            grid.DefaultCellStyle.SelectionBackColor = Color.FromArgb(30, 30, 35);
+            grid.DefaultCellStyle.SelectionForeColor = Color.White;
+
+            // Make the header row minimal height or invisible
+            grid.ColumnHeadersHeight = 4;
+            grid.ColumnHeadersVisible = false;
+
+            // Explicitly set scrollbar visibility
+            grid.ScrollBars = ScrollBars.Vertical;
+        }
+
+        private void LoadRouteData(DataGridView routeGrid)
+        {
+            // If routeManager is initialized, let it handle loading
+            if (routeManager != null)
+            {
+                string selectedGame = GetSelectedGameName();
+                if (!string.IsNullOrEmpty(selectedGame))
+                {
+                    routeManager.LoadRouteDataIntoGrid(routeGrid, selectedGame);
+                }
+                else
+                {
+                    // Show a placeholder message when no game is selected yet
+                    routeGrid.Rows.Add("Please select and connect to a game to load route data", "");
+                }
+            }
+            else
+            {
+                // Initial diagnostic message
+                routeGrid.Rows.Add("Connect to a game to load route tracking data", "");
+            }
+        }
+
+        private string GetSelectedGameName()
+        {
+            if (MainMenuStrip?.Items.OfType<ToolStripComboBox>().FirstOrDefault() is ToolStripComboBox gameDropdown)
+            {
+                return gameDropdown.SelectedItem?.ToString() ?? string.Empty;
+            }
+            return string.Empty;
+        }
+
+        // In MainForm.cs, replace the entire UpdateRouteCompletionStatus method with:
+        private void UpdateRouteCompletionStatus(DataGridView routeGrid, StatsUpdatedEventArgs stats)
+        {
+            // Delegate all the route checking logic to the RouteManager
+            if (routeManager != null)
+            {
+                routeManager.UpdateCompletionStatus(routeGrid, stats);
+            }
+        }
+
+        [SupportedOSPlatform("windows6.1")]
+        private void InitializeHiddenControls()
+        {
             // Initialize gameDirectoryTextBox and autoStartCheckBox
             gameDirectoryTextBox = new TextBox
             {
-                Location = new System.Drawing.Point((this.ClientSize.Width - 800) / 2, 100),
-                Width = 600,
                 ReadOnly = true,
-                Visible = false
+                Visible = false,
+                Width = 600,
+                Dock = DockStyle.Top
             };
             statsTabPage.Controls.Add(gameDirectoryTextBox);
 
             autoStartCheckBox = new CheckBox
             {
                 Text = "Auto-Start Game",
-                Location = new System.Drawing.Point((this.ClientSize.Width - 800) / 2, 130)
+                Visible = false,
+                Dock = DockStyle.Top
             };
             autoStartCheckBox.CheckedChanged += AutoStartCheckBox_CheckedChanged;
-            autoStartCheckBox.Visible = false;
             statsTabPage.Controls.Add(autoStartCheckBox);
         }
 
@@ -276,15 +518,33 @@ namespace Assassin_s_Creed_Route_Tracker
             gameDirectoryTextBox.Text = gameDirectory;
 
             // Remember process name for later reference
-            currentProcess = selectedGame == "Assassin's Creed 4" ? "AC4BFSP.exe" : "ACS.exe";
+            currentProcess = selectedGame switch
+            {
+                "Assassin's Creed 4" => "AC4BFSP.exe",
+                "God of War 2018" => "GoW.exe",
+                _ => string.Empty
+            };
 
             // Use GameConnectionManager to handle the connection
             bool connected = await gameConnectionManager.ConnectToGameAsync(selectedGame, autoStartCheckBox.Checked);
 
+            // Use actual route file path when initializing RouteManager
             if (connected)
             {
                 connectionLabel.Text = $"Connected to {selectedGame}";
-                routeManager = new RouteManager("path_to_route_file.txt"); // Update with actual path
+                string routeFilePath = Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "Routes",
+                    "AC4 100 % Route - Main Route.tsv"); // Use the exact filename you have
+
+                // Pass the gameConnectionManager when creating the RouteManager
+                routeManager = new RouteManager(routeFilePath, gameConnectionManager);
+
+                // Reload route data if we're on the route tab
+                if (routeTabPage.Controls["routeGrid"] is DataGridView routeGrid)
+                {
+                    LoadRouteData(routeGrid);
+                }
             }
             else
             {
@@ -302,26 +562,23 @@ namespace Assassin_s_Creed_Route_Tracker
         // The real workhorse that keeps the display current without clicking buttons
         private void GameStats_StatsUpdated(object? sender, StatsUpdatedEventArgs e)
         {
-            // we need to Invoke since this event comes from another thing
-            if (statsTabPage.Controls["percentageLabel"] is Label percentageLabel)
-            {
-                this.Invoke(() => {
-                    percentageLabel.Text = $"Completion Percentage: {e.Percent}%\n" +
-                        $"Completion Percentage Exact: {Math.Round(e.PercentFloat, 2)}%\n" +
-                        $"Viewpoints Completed: {e.Viewpoints}\n" +
-                        $"Myan Stones Collected: {e.Myan}\n" +
-                        $"Buried Treasure Collected: {e.Treasure}\n" +
-                        $"AnimusFragments Collected: {e.Fragments}\n" +
-                        $"AssassinContracts Completed: {e.Assassin}\n" +
-                        $"NavalContracts Completed: {e.Naval}\n" +
-                        $"LetterBottles Collected: {e.Letters}\n" +
-                        $"Manuscripts Collected: {e.Manuscripts}\n" +
-                        $"Music Sheets Collected: {e.Music}\n" +
-                        $"Forts Captured: {e.Forts}\n" +
-                        $"Taverns unlocked: {e.Taverns}\n" +
-                        $"Total Chests Collected: {e.TotalChests}";
-                });
-            }
+            this.Invoke(() => {
+                // Update stats display if in updating mode
+                if (statsTabPage.Controls[0] is TableLayoutPanel statsLayout &&
+                    statsLayout.Controls["percentageLabel"] is Label percentageLabel &&
+                    percentageLabel.Tag?.ToString() == "updating")
+                {
+                    UpdateStatsDisplay(percentageLabel, e.Percent, e.PercentFloat, e.Viewpoints, e.Myan,
+                        e.Treasure, e.Fragments, e.Assassin, e.Naval, e.Letters, e.Manuscripts,
+                        e.Music, e.Forts, e.Taverns, e.TotalChests);
+                }
+
+                // Update route completion status
+                if (routeTabPage.Controls["routeGrid"] is DataGridView routeGrid)
+                {
+                    UpdateRouteCompletionStatus(routeGrid, e);
+                }
+            });
         }
 
         // ==========FORMAL COMMENT=========
@@ -414,7 +671,8 @@ namespace Assassin_s_Creed_Route_Tracker
         [SupportedOSPlatform("windows6.1")]
         private void PercentageButton_Click(object? sender, EventArgs e)
         {
-            if (statsTabPage.Controls["percentageLabel"] is Label percentageLabel)
+            if (statsTabPage.Controls[0] is TableLayoutPanel statsLayout &&
+            statsLayout.Controls["percentageLabel"] is Label percentageLabel)
             {
                 if (gameConnectionManager.IsConnected && currentProcess == "AC4BFSP.exe")
                 {
@@ -426,22 +684,16 @@ namespace Assassin_s_Creed_Route_Tracker
                             return;
                         }
 
+                        // Get current stats
                         var (Percent, PercentFloat, Viewpoints, Myan, Treasure, Fragments, Assassin, Naval, Letters, Manuscripts, Music, Forts, Taverns, TotalChests) = gameConnectionManager.GameStats.GetStats();
 
-                        percentageLabel.Text = $"Completion Percentage: {Percent}%\n" +
-                            $"Completion Percentage Exact: {Math.Round(PercentFloat, 2)}%\n" +
-                            $"Viewpoints Completed: {Viewpoints}\n" +
-                            $"Myan Stones Collected: {Myan}\n" +
-                            $"Buried Treasure Collected: {Treasure}\n" +
-                            $"AnimusFragments Collected: {Fragments}\n" +
-                            $"AssassinContracts Completed: {Assassin}\n" +
-                            $"NavalContracts Completed: {Naval}\n" +
-                            $"LetterBottles Collected: {Letters}\n" +
-                            $"Manuscripts Collected: {Manuscripts}\n" +
-                            $"Music Sheets Collected: {Music}\n" +
-                            $"Forts Captured: {Forts}\n" +
-                            $"Taverns unlocked: {Taverns}\n" +
-                            $"Total Chests Collected: {TotalChests}";
+                        // Update the display
+                        UpdateStatsDisplay(percentageLabel, Percent, PercentFloat, Viewpoints, Myan,
+                            Treasure, Fragments, Assassin, Naval, Letters, Manuscripts,
+                            Music, Forts, Taverns, TotalChests);
+
+                        // Set a tag to indicate we're in continuous update mode
+                        percentageLabel.Tag = "updating";
                     }
                     catch (Win32Exception ex)
                     {
@@ -452,8 +704,8 @@ namespace Assassin_s_Creed_Route_Tracker
                         percentageLabel.Text = $"Unexpected error: {ex.Message}";
                     }
                 }
-                else if (gameConnectionManager.IsConnected && currentProcess == "ACS.exe")
-                    percentageLabel.Text = "Percentage feature not available for Assassin's Creed Syndicate";
+                else if (gameConnectionManager.IsConnected && currentProcess == "GoW.exe")
+                    percentageLabel.Text = "Percentage feature not available for God of War 2018";
                 else
                     percentageLabel.Text = "Not connected to a game";
             }
@@ -461,6 +713,27 @@ namespace Assassin_s_Creed_Route_Tracker
             {
                 MessageBox.Show("The percentage label control was not found.");
             }
+        }
+
+        // Helper method to update the stats display (used by both button click and event handler)
+        private void UpdateStatsDisplay(Label label, int percent, float percentFloat, int viewpoints, int myan,
+            int treasure, int fragments, int assassin, int naval, int letters, int manuscripts,
+            int music, int forts, int taverns, int totalChests)
+        {
+            label.Text = $"Completion Percentage: {percent}%\n" +
+                $"Completion Percentage Exact: {Math.Round(percentFloat, 2)}%\n" +
+                $"Viewpoints Completed: {viewpoints}\n" +
+                $"Myan Stones Collected: {myan}\n" +
+                $"Buried Treasure Collected: {treasure}\n" +
+                $"AnimusFragments Collected: {fragments}\n" +
+                $"AssassinContracts Completed: {assassin}\n" +
+                $"NavalContracts Completed: {naval}\n" +
+                $"LetterBottles Collected: {letters}\n" +
+                $"Manuscripts Collected: {manuscripts}\n" +
+                $"Music Sheets Collected: {music}\n" +
+                $"Forts Captured: {forts}\n" +
+                $"Taverns unlocked: {taverns}\n" +
+                $"Total Chests Collected: {totalChests}";
         }
 
         // ==========FORMAL COMMENT=========
