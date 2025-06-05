@@ -264,25 +264,6 @@ namespace Route_Tracker
             return false;
         }
 
-        public bool IsTargetProcess64Bit()
-        {
-            if (processHandle == IntPtr.Zero)
-                return Environment.Is64BitOperatingSystem; // Default assumption
-            
-            // Check if process is 64-bit
-            if (!IsWow64Process(processHandle, out bool isWow64Process))
-                return Environment.Is64BitOperatingSystem;
-            
-            // On 64-bit Windows: 
-            // - 32-bit processes run under WOW64 (isWow64Process = true)
-            // - 64-bit processes do not (isWow64Process = false)
-            return Environment.Is64BitOperatingSystem && !isWow64Process;
-        }
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool IsWow64Process(IntPtr hProcess, out bool wow64Process);
-
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr OpenProcess(int dwDesiredAccess, bool bInheritHandle, int dwProcessId);
     }
