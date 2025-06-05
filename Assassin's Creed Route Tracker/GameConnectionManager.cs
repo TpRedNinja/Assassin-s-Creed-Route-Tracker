@@ -7,9 +7,9 @@ using System.Runtime.Versioning;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Assassin_s_Creed_Route_Tracker.Properties;
+using Route_Tracker.Properties;
 
-namespace Assassin_s_Creed_Route_Tracker
+namespace Route_Tracker
 {
     public class GameConnectionManager
     {
@@ -193,14 +193,11 @@ namespace Assassin_s_Creed_Route_Tracker
         {
             if (processHandle != IntPtr.Zero && baseAddress != IntPtr.Zero)
             {
-                bool is64Bit = IsTargetProcess64Bit();
-                Debug.WriteLine($"Initializing GameStats for {(is64Bit ? "64-bit" : "32-bit")} process");
-
                 // Create the correct stats object based on game
                 gameStats = gameName switch
                 {
-                    "Assassin's Creed 4" => new AC4GameStats(processHandle, baseAddress, is64Bit),
-                    "God of War 2018" => new GoW2018GameStats(processHandle, baseAddress, is64Bit),
+                    "Assassin's Creed 4" => new AC4GameStats(processHandle, baseAddress),
+                    "God of War 2018" => new GoW2018GameStats(processHandle, baseAddress),
                     _ => throw new NotSupportedException($"Game {gameName} is not supported")
                 };
 
