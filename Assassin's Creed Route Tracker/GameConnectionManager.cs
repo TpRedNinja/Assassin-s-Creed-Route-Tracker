@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -16,7 +16,7 @@ namespace Assassin_s_Creed_Route_Tracker
         private IntPtr processHandle;
         private IntPtr baseAddress;
         private string currentProcess = string.Empty;
-        private GameStats? gameStats;
+        private GameStatsBase? gameStats;
 
         private const int PROCESS_WM_READ = 0x0010;
 
@@ -24,7 +24,7 @@ namespace Assassin_s_Creed_Route_Tracker
         public event EventHandler<StatsUpdatedEventArgs>? StatsUpdated;
 
         public bool IsConnected => processHandle != IntPtr.Zero && baseAddress != IntPtr.Zero;
-        public GameStats? GameStats => gameStats;
+        public GameStatsBase? GameStats => gameStats;
         public IntPtr ProcessHandle => processHandle;
         public IntPtr BaseAddress => baseAddress;
 
@@ -100,9 +100,9 @@ namespace Assassin_s_Creed_Route_Tracker
                 {
                     gameDirectory = Settings.Default?.AC4Directory ?? string.Empty;
                 }
-                else if (currentProcess == "ACS.exe")
+                else if (currentProcess == "GoW.exe")
                 {
-                    gameDirectory = Settings.Default?.ACSDirectory ?? string.Empty;
+                    gameDirectory = Settings.Default?.GoW2018Directory ?? string.Empty;
                 }
 
                 if (string.IsNullOrEmpty(gameDirectory))
@@ -189,13 +189,21 @@ namespace Assassin_s_Creed_Route_Tracker
             currentProcess = processName;
         }
 
-        public void InitializeGameStats()
+        public void InitializeGameStats(string gameName)
         {
             if (processHandle != IntPtr.Zero && baseAddress != IntPtr.Zero)
             {
                 bool is64Bit = IsTargetProcess64Bit();
                 Debug.WriteLine($"Initializing GameStats for {(is64Bit ? "64-bit" : "32-bit")} process");
-                gameStats = new GameStats(processHandle, baseAddress, is64Bit);
+
+                // Create the correct stats object based on game
+                gameStats = gameName switch
+                {
+                    "Assassin's Creed 4" => new AC4GameStats(processHandle, baseAddress, is64Bit),
+                    "God of War 2018" => new GoW2018GameStats(processHandle, baseAddress, is64Bit),
+                    _ => throw new NotSupportedException($"Game {gameName} is not supported")
+                };
+
                 gameStats.StatsUpdated += OnGameStatsUpdated;
                 gameStats.StartUpdating();
             }
@@ -228,15 +236,15 @@ namespace Assassin_s_Creed_Route_Tracker
             // Set the correct process name based on game selection
             if (gameName == "Assassin's Creed 4")
                 currentProcess = "AC4BFSP.exe";
-            else if (gameName == "Assassin's Creed Syndicate")
-                currentProcess = "ACS.exe";
+            else if (gameName == "God of War 2018")
+                currentProcess = "GoW.exe";
             else
                 return false; // Invalid game selection
 
             // Auto-start the game if requested and not already running
             if (autoStart)
             {
-                if (gameName == "Assassin's Creed Syndicate")
+                if (gameName == "God of War 2018")
                     return false; // Auto-start not supported for Syndicate
 
                 if (!IsProcessRunning(currentProcess))
@@ -252,7 +260,7 @@ namespace Assassin_s_Creed_Route_Tracker
             // Initialize game stats if connection was successful
             if (processHandle != IntPtr.Zero)
             {
-                InitializeGameStats();
+                InitializeGameStats(gameName);
                 return true;
             }
 
